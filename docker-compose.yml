@@ -1,0 +1,37 @@
+services:
+  mission-control-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mission-control-server
+    env_file:
+      - .env
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+      ENABLE_BROWSER_LAUNCH: "false"
+    command: ["uv", "run", "mission_control"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1', 8000), 2); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  mission-control-voice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mission-control-voice
+    env_file:
+      - .env
+    environment:
+      MCP_SERVER_URL: http://mission-control-server:8000/sse
+      ENABLE_BROWSER_LAUNCH: "false"
+    command: ["uv", "run", "mission_control_voice"]
+    depends_on:
+      mission-control-server:
+        condition: service_healthy
+    restart: unless-stopped
